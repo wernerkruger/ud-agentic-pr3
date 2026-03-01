@@ -28,10 +28,10 @@ with open(spec_path, "r", encoding="utf-8") as f:
 # Action Planning Agent
 # ---------------------------------------------------------------------------
 knowledge_action_planning = (
-    "A complete development plan has exactly three steps in this order: "
-    "(1) Define user stories from the product spec (persona, action, outcome per story). "
-    "(2) Define product features by grouping related user stories. "
-    "(3) Define detailed engineering tasks for each user story. "
+    "A complete development plan for the Email Router product has exactly three steps in this order: "
+    "(1) Define user stories for the Email Router from the product spec (persona, action, outcome per story). "
+    "(2) Define product features for the Email Router by grouping related user stories. "
+    "(3) Define detailed engineering tasks for the Email Router for each user story. "
     "Return only these three steps, one per line, in that order."
 )
 action_planning_agent = ActionPlanningAgent(openai_api_key, knowledge_action_planning)
@@ -55,8 +55,9 @@ product_manager_knowledge_agent = KnowledgeAugmentedPromptAgent(
 # ---------------------------------------------------------------------------
 persona_pm_eval = "You are an evaluation agent that checks the answers of other worker agents"
 evaluation_criteria_pm = (
-    "The answer should be stories that follow the following structure: "
-    "As a [type of user], I want [an action or feature] so that [benefit/value]."
+    "The answer must be user stories for the Email Router product only, each in the form: "
+    "As a [type of user], I want [an action or feature] so that [benefit/value]. "
+    "Stories must reference email, routing, classification, or response (no generic or non-Email-Router content)."
 )
 product_manager_evaluation_agent = EvaluationAgent(
     openai_api_key,
@@ -67,10 +68,17 @@ product_manager_evaluation_agent = EvaluationAgent(
 )
 
 # ---------------------------------------------------------------------------
-# Program Manager - Knowledge Augmented Prompt Agent
+# Program Manager - Knowledge Augmented Prompt Agent (with Email Router context)
 # ---------------------------------------------------------------------------
 persona_program_manager = "You are a Program Manager, you are responsible for defining the features for a product."
-knowledge_program_manager = "Features of a product are defined by organizing similar user stories into cohesive groups."
+knowledge_program_manager = (
+    "Features are defined by organizing similar user stories into cohesive groups. "
+    "Each feature must use: Feature Name:, Description:, Key Functionality:, User Benefit:.\n\n"
+    "The product is the Email Router (AI-powered email analysis and routing). "
+    "Features must be specific to the Email Router product below, not generic.\n\n"
+    "Email Router product context:\n"
+    + product_spec
+)
 program_manager_knowledge_agent = KnowledgeAugmentedPromptAgent(
     openai_api_key, persona_program_manager, knowledge_program_manager
 )
@@ -80,11 +88,9 @@ program_manager_knowledge_agent = KnowledgeAugmentedPromptAgent(
 # ---------------------------------------------------------------------------
 persona_program_manager_eval = "You are an evaluation agent that checks the answers of other worker agents."
 evaluation_criteria_program = (
-    "The answer should be product features that follow the following structure: "
-    "Feature Name: A clear, concise title that identifies the capability\n"
-    "Description: A brief explanation of what the feature does and its purpose\n"
-    "Key Functionality: The specific capabilities or actions the feature provides\n"
-    "User Benefit: How this feature creates value for the user"
+    "The answer must be product features for the Email Router only (email ingestion, classification, "
+    "routing, response generation, dashboard), each with: Feature Name:, Description:, Key Functionality:, User Benefit:. "
+    "No generic features (e.g. no Social Media Integration); features must be Email Router–specific."
 )
 program_manager_evaluation_agent = EvaluationAgent(
     openai_api_key,
@@ -95,10 +101,18 @@ program_manager_evaluation_agent = EvaluationAgent(
 )
 
 # ---------------------------------------------------------------------------
-# Development Engineer - Knowledge Augmented Prompt Agent
+# Development Engineer - Knowledge Augmented Prompt Agent (with Email Router context)
 # ---------------------------------------------------------------------------
 persona_dev_engineer = "You are a Development Engineer, you are responsible for defining the development tasks for a product."
-knowledge_dev_engineer = "Development tasks are defined by identifying what needs to be built to implement each user story."
+knowledge_dev_engineer = (
+    "Development tasks are defined by identifying what needs to be built to implement each user story. "
+    "Each task must use: Task ID:, Task Title:, Related User Story:, Description:, "
+    "Acceptance Criteria:, Estimated Effort:, Dependencies:.\n\n"
+    "The product is the Email Router (AI-powered email analysis, routing, classification, response generation). "
+    "Tasks must be specific to building the Email Router, not generic.\n\n"
+    "Email Router product context:\n"
+    + product_spec
+)
 development_engineer_knowledge_agent = KnowledgeAugmentedPromptAgent(
     openai_api_key, persona_dev_engineer, knowledge_dev_engineer
 )
@@ -108,14 +122,9 @@ development_engineer_knowledge_agent = KnowledgeAugmentedPromptAgent(
 # ---------------------------------------------------------------------------
 persona_dev_engineer_eval = "You are an evaluation agent that checks the answers of other worker agents."
 evaluation_criteria_dev = (
-    "The answer should be tasks following this exact structure: "
-    "Task ID: A unique identifier for tracking purposes\n"
-    "Task Title: Brief description of the specific development work\n"
-    "Related User Story: Reference to the parent user story\n"
-    "Description: Detailed explanation of the technical work required\n"
-    "Acceptance Criteria: Specific requirements that must be met for completion\n"
-    "Estimated Effort: Time or complexity estimation\n"
-    "Dependencies: Any tasks that must be completed first"
+    "The answer must be engineering tasks for the Email Router product only, each with: Task ID:, Task Title:, "
+    "Related User Story:, Description:, Acceptance Criteria:, Estimated Effort:, Dependencies:. "
+    "Tasks must be for building the Email Router (email, classification, routing, RAG, dashboard); no generic auth or unrelated tasks."
 )
 development_engineer_evaluation_agent = EvaluationAgent(
     openai_api_key,
@@ -180,10 +189,11 @@ routing_agent = RoutingAgent(openai_api_key, routing_routes)
 
 print("\n*** Workflow execution started ***\n")
 
-# Full-plan prompt: request user stories, product features, and engineering tasks
+# Full-plan prompt: request Email Router–specific user stories, features, and engineering tasks
 workflow_prompt = (
-    "Create a complete development plan for this product including: "
-    "(1) user stories, (2) product features, and (3) detailed engineering tasks."
+    "Create a complete development plan for the Email Router product (AI-powered email analysis, "
+    "routing, and response system) including: (1) user stories, (2) product features, and (3) detailed engineering tasks. "
+    "All output must be specific to the Email Router, not generic."
 )
 print(f"Task to complete in this workflow, workflow prompt = {workflow_prompt}")
 
@@ -192,10 +202,28 @@ workflow_steps = action_planning_agent.extract_steps_from_prompt(workflow_prompt
 
 completed_steps = []
 for i, step in enumerate(workflow_steps, 1):
+    # Pass prior-step outputs so features and tasks are Email Router–specific and chained
+    if i == 1:
+        step_prompt = step
+    elif i == 2 and completed_steps:
+        step_prompt = (
+            step + "\n\n[Email Router] Use ONLY the following user stories to define product features. "
+            "Output features specific to the Email Router (email ingestion, classification, routing, response generation, dashboard).\n\n"
+            "User stories:\n" + completed_steps[0]
+        )
+    elif i == 3 and len(completed_steps) >= 2:
+        step_prompt = (
+            step + "\n\n[Email Router] Use the following user stories and features to define engineering tasks. "
+            "Output tasks specific to building the Email Router system.\n\n"
+            "User stories:\n" + completed_steps[0] + "\n\nProduct features:\n" + completed_steps[1]
+        )
+    else:
+        step_prompt = step
+
     print(f"\n{'='*60}")
     print(f"Step {i}: {step}")
     print("=" * 60)
-    result = routing_agent.route(step)
+    result = routing_agent.route(step_prompt)
     completed_steps.append(result)
     print(f"\nResult for step {i}:")
     print(result)
@@ -209,11 +237,11 @@ final_plan = {
 }
 
 print("\n" + "=" * 60)
-print("*** Final consolidated output of the workflow ***")
+print("*** Final consolidated output: Email Router development plan ***")
 print("=" * 60)
-print("\n--- USER STORIES ---")
+print("\n--- USER STORIES (As a [user], I want [action] so that [benefit].) ---")
 print(final_plan["user_stories"])
-print("\n--- PRODUCT FEATURES ---")
+print("\n--- PRODUCT FEATURES (Feature Name / Description / Key Functionality / User Benefit) ---")
 print(final_plan["product_features"])
-print("\n--- ENGINEERING TASKS ---")
+print("\n--- ENGINEERING TASKS (Task ID / Title / Related User Story / Description / Acceptance Criteria / Effort / Dependencies) ---")
 print(final_plan["engineering_tasks"])

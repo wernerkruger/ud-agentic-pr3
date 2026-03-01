@@ -1,4 +1,11 @@
-Command: python rag_knowledge_prompt_agent.py
+Command: python3 rag_knowledge_prompt_agent.py
 Output:
 -------
-run_all_tests_and_save_outputs.sh: 25: python: not found
+Prompt: What is the podcast that Clara hosts about?
+
+Response: Dear students,
+
+The podcast that Clara hosts is called "Crosscurrents." It explores the intersection of science, culture, and ethics by interviewing researchers, engineers, and artists. In one episode, Clara delved into how RAG (Recommender Systems for Academic Literature) could assist researchers in discovering niche studies. Through her podcast, Clara showcases the importance and power of connecting across different disciplines.
+
+Best regards,
+[Your Name]

@@ -1,4 +1,14 @@
-Command: python action_planning_agent.py
+Command: python3 action_planning_agent.py
 Output:
 -------
-run_all_tests_and_save_outputs.sh: 25: python: not found
+Prompt: One morning I wanted to have scrambled eggs
+
+Extracted action steps:
+  1. 1. Crack eggs into a bowl
+  2. 2. Beat eggs with a fork until mixed
+  3. 3. Heat pan with butter or oil over medium heat
+  4. 4. Pour egg mixture into pan
+  5. 5. Stir gently as eggs cook
+  6. 6. Remove from heat when eggs are just set but still moist
+  7. 7. Season with salt and pepper
+  8. 8. Serve immediately

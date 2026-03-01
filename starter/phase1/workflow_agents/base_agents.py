@@ -121,7 +121,12 @@ class RAGKnowledgePromptAgent:
         separator = "\n"
         text = re.sub(r"\s+", " ", text).strip()
         if len(text) <= self.chunk_size:
-            return [{"chunk_id": 0, "text": text, "chunk_size": len(text)}]
+            chunks = [{"chunk_id": 0, "text": text, "chunk_size": len(text)}]
+            with open(f"chunks-{self.unique_filename}", "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=["text", "chunk_size"])
+                writer.writeheader()
+                writer.writerow({"text": text, "chunk_size": len(text)})
+            return chunks
         chunks, start, chunk_id = [], 0, 0
         while start < len(text):
             end = min(start + self.chunk_size, len(text))

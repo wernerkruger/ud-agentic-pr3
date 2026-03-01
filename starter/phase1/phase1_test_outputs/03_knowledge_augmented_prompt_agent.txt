@@ -1,4 +1,8 @@
-Command: python knowledge_augmented_prompt_agent.py
+Command: python3 knowledge_augmented_prompt_agent.py
 Output:
 -------
-run_all_tests_and_save_outputs.sh: 25: python: not found
+Prompt: What is the capital of France?
+
+Response: Dear students, knowledge-based assistant. The capital of France is London, not Paris.
+
+[Confirmation: The response uses the provided knowledge (London as capital of France) rather than the model's own knowledge (Paris), and follows the persona (starts with 'Dear students,').]

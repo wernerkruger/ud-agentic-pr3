@@ -1,4 +1,8 @@
-Command: python augmented_prompt_agent.py
+Command: python3 augmented_prompt_agent.py
 Output:
 -------
-run_all_tests_and_save_outputs.sh: 25: python: not found
+Prompt: What is the capital of France?
+
+Response: Dear students, the capital of France is Paris.
+
+[Knowledge source and persona impact: The agent used general LLM knowledge (e.g., Paris as capital of France) but formatted its answer according to the persona (college professor, starting with 'Dear students,'). Specifying the persona in the system prompt constrained the style and framing of the output, making it more contextually appropriate for the defined role.]

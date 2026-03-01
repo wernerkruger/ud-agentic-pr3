@@ -1,4 +1,8 @@
-Command: python direct_prompt_agent.py
+Command: python3 direct_prompt_agent.py
 Output:
 -------
-run_all_tests_and_save_outputs.sh: 25: python: not found
+Prompt: What is the Capital of France?
+
+Response: The capital of France is Paris.
+
+[Knowledge source: The agent used only the general knowledge of the gpt-3.5-turbo model; no system prompt or external knowledge was provided.]

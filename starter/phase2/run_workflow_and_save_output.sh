@@ -8,9 +8,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 OUTPUT_FILE="${SCRIPT_DIR}/workflow_output.txt"
 
+if command -v python3 &>/dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &>/dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "Error: neither python3 nor python found"
+    exit 1
+fi
+
 echo "Running agentic_workflow.py and saving output to: $OUTPUT_FILE"
-echo "Command: python agentic_workflow.py" > "$OUTPUT_FILE"
+echo "Command: $PYTHON_CMD agentic_workflow.py" > "$OUTPUT_FILE"
 echo "Output:" >> "$OUTPUT_FILE"
 echo "-------" >> "$OUTPUT_FILE"
-python agentic_workflow.py >> "$OUTPUT_FILE" 2>&1
+$PYTHON_CMD -u agentic_workflow.py >> "$OUTPUT_FILE" 2>&1
 echo "Done. Submit $OUTPUT_FILE (or a screenshot) as Phase 2 workflow evidence."
