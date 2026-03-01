@@ -47,6 +47,7 @@ chunks = RAG_knowledge_prompt_agent.chunk_text(knowledge_text)
 embbedings = RAG_knowledge_prompt_agent.calculate_embeddings()
 
 prompt = "What is the podcast that Clara hosts about?"
-print(prompt)
+print("Prompt:", prompt)
+print()
 prompt_answer = RAG_knowledge_prompt_agent.find_prompt_in_knowledge(prompt)
-print(prompt_answer)
+print("Response:", prompt_answer)

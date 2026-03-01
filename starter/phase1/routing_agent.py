@@ -54,4 +54,5 @@ test_prompts = [
 
 for p in test_prompts:
     print(f"\n--- Prompt: {p} ---")
-    print(routing_agent.route(p))
+    response = routing_agent.route(p)
+    print("Response:", response)

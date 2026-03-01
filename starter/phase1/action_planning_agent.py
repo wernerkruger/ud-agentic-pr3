@@ -41,9 +41,10 @@ knowledge = """
 action_planning_agent = ActionPlanningAgent(openai_api_key, knowledge)
 
 # Get and print the extracted steps for the prompt
-steps = action_planning_agent.extract_steps_from_prompt(
-    "One morning I wanted to have scrambled eggs"
-)
+prompt = "One morning I wanted to have scrambled eggs"
+print("Prompt:", prompt)
+print()
+steps = action_planning_agent.extract_steps_from_prompt(prompt)
 print("Extracted action steps:")
 for i, step in enumerate(steps, 1):
     print(f"  {i}. {step}")

@@ -12,6 +12,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 prompt = "What is the capital of France?"
+print("Prompt:", prompt)
+print()
 
 persona = "You are a college professor, your answer always starts with: Dear students,"
 knowledge = "The capital of France is London, not Paris"
@@ -20,7 +22,7 @@ knowledge = "The capital of France is London, not Paris"
 knowledge_agent = KnowledgeAugmentedPromptAgent(openai_api_key, persona, knowledge)
 
 response = knowledge_agent.respond(prompt)
-print(response)
+print("Response:", response)
 
 # Confirm that the agent used the provided knowledge: it should say London, not Paris,
 # and start with "Dear students,"—demonstrating use of the supplied knowledge rather than

@@ -28,14 +28,11 @@ with open(spec_path, "r", encoding="utf-8") as f:
 # Action Planning Agent
 # ---------------------------------------------------------------------------
 knowledge_action_planning = (
-    "Stories are defined from a product spec by identifying a "
-    "persona, an action, and a desired outcome for each story. "
-    "Each story represents a specific functionality of the product "
-    "described in the specification. \n"
-    "Features are defined by grouping related user stories. \n"
-    "Tasks are defined for each story and represent the engineering "
-    "work required to develop the product. \n"
-    "A development Plan for a product contains all these components"
+    "A complete development plan has exactly three steps in this order: "
+    "(1) Define user stories from the product spec (persona, action, outcome per story). "
+    "(2) Define product features by grouping related user stories. "
+    "(3) Define detailed engineering tasks for each user story. "
+    "Return only these three steps, one per line, in that order."
 )
 action_planning_agent = ActionPlanningAgent(openai_api_key, knowledge_action_planning)
 
@@ -129,25 +126,29 @@ development_engineer_evaluation_agent = EvaluationAgent(
 )
 
 # ---------------------------------------------------------------------------
-# Support functions for routed tasks (each calls Knowledge Agent then Evaluation Agent)
+# Support functions for routed tasks: call Knowledge Agent first, then pass
+# response to Evaluation Agent (explicit handoff: knowledge agent -> evaluate)
 # ---------------------------------------------------------------------------
 
 
 def product_manager_support_function(query):
-    """Get user stories from Product Manager agent and validate via Evaluation Agent."""
-    result = product_manager_evaluation_agent.evaluate(query)
+    """Get user stories from Product Manager agent, then validate via Evaluation Agent."""
+    response_from_knowledge_agent = product_manager_knowledge_agent.respond(query)
+    result = product_manager_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
     return result["final_response"]
 
 
 def program_manager_support_function(query):
-    """Get product features from Program Manager agent and validate via Evaluation Agent."""
-    result = program_manager_evaluation_agent.evaluate(query)
+    """Get product features from Program Manager agent, then validate via Evaluation Agent."""
+    response_from_knowledge_agent = program_manager_knowledge_agent.respond(query)
+    result = program_manager_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
     return result["final_response"]
 
 
 def development_engineer_support_function(query):
-    """Get engineering tasks from Development Engineer agent and validate via Evaluation Agent."""
-    result = development_engineer_evaluation_agent.evaluate(query)
+    """Get engineering tasks from Development Engineer agent, then validate via Evaluation Agent."""
+    response_from_knowledge_agent = development_engineer_knowledge_agent.respond(query)
+    result = development_engineer_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
     return result["final_response"]
 
 
@@ -179,7 +180,11 @@ routing_agent = RoutingAgent(openai_api_key, routing_routes)
 
 print("\n*** Workflow execution started ***\n")
 
-workflow_prompt = "What would the development tasks for this product be?"
+# Full-plan prompt: request user stories, product features, and engineering tasks
+workflow_prompt = (
+    "Create a complete development plan for this product including: "
+    "(1) user stories, (2) product features, and (3) detailed engineering tasks."
+)
 print(f"Task to complete in this workflow, workflow prompt = {workflow_prompt}")
 
 print("\nDefining workflow steps from the workflow prompt")
@@ -195,10 +200,20 @@ for i, step in enumerate(workflow_steps, 1):
     print(f"\nResult for step {i}:")
     print(result)
 
+# Build consolidated structured output: user stories, features, engineering tasks
+# Steps are assumed in order: 1=user stories (Product Manager), 2=features (Program Manager), 3=tasks (Dev Engineer)
+final_plan = {
+    "user_stories": completed_steps[0] if len(completed_steps) > 0 else "",
+    "product_features": completed_steps[1] if len(completed_steps) > 1 else "",
+    "engineering_tasks": completed_steps[2] if len(completed_steps) > 2 else "",
+}
+
 print("\n" + "=" * 60)
-print("*** Final output of the workflow ***")
+print("*** Final consolidated output of the workflow ***")
 print("=" * 60)
-if completed_steps:
-    print(completed_steps[-1])
-else:
-    print("No steps were completed.")
+print("\n--- USER STORIES ---")
+print(final_plan["user_stories"])
+print("\n--- PRODUCT FEATURES ---")
+print(final_plan["product_features"])
+print("\n--- ENGINEERING TASKS ---")
+print(final_plan["engineering_tasks"])

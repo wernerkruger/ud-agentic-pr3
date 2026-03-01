@@ -262,6 +262,84 @@ class EvaluationAgent:
             "iterations": iterations,
         }
 
+    def evaluate_response(self, initial_prompt, response_from_worker):
+        """
+        Evaluate a pre-obtained worker response (e.g. from Knowledge Agent).
+        Uses the provided response for the first iteration; refinement loop calls worker if needed.
+        """
+        client = _client(self.openai_api_key)
+        current_response = response_from_worker
+        prompt_to_evaluate = initial_prompt
+        final_evaluation = None
+        iterations = 0
+
+        for i in range(self.max_interactions):
+            iterations = i + 1
+            print(f"\n--- Interaction {iterations} ---")
+            if i == 0:
+                print(" Step 1: Using provided response from Knowledge Agent")
+            else:
+                print(" Step 1: Worker agent generated refined response")
+            print(f"Prompt:\n{prompt_to_evaluate}")
+            print(f"Worker Agent Response:\n{current_response}")
+
+            print(" Step 2: Evaluator agent judges the response")
+            eval_prompt = (
+                f"Does the following answer: {current_response}\n"
+                f"Meet this criteria: {self.evaluation_criteria}\n"
+                "Respond Yes or No, and the reason why it does or doesn't meet the criteria."
+            )
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": self.persona},
+                    {"role": "user", "content": eval_prompt},
+                ],
+                temperature=0,
+            )
+            evaluation = response.choices[0].message.content.strip()
+            final_evaluation = evaluation
+            print(f"Evaluator Agent Evaluation:\n{evaluation}")
+
+            print(" Step 3: Check if evaluation is positive")
+            if evaluation.lower().startswith("yes"):
+                print("✅ Final solution accepted.")
+                return {
+                    "final_response": current_response,
+                    "evaluation": final_evaluation,
+                    "iterations": iterations,
+                }
+
+            print(" Step 4: Generate instructions to correct the response")
+            instruction_prompt = (
+                f"Provide instructions to fix an answer based on these reasons why it is incorrect: {evaluation}"
+            )
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": self.persona},
+                    {"role": "user", "content": instruction_prompt},
+                ],
+                temperature=0,
+            )
+            instructions = response.choices[0].message.content.strip()
+            print(f"Instructions to fix:\n{instructions}")
+
+            print(" Step 5: Send feedback to worker agent for refinement")
+            prompt_to_evaluate = (
+                f"The original prompt was: {initial_prompt}\n"
+                f"The response to that prompt was: {current_response}\n"
+                "It has been evaluated as incorrect.\n"
+                f"Make only these corrections, do not alter content validity: {instructions}"
+            )
+            current_response = self.worker_agent.respond(prompt_to_evaluate)
+
+        return {
+            "final_response": current_response,
+            "evaluation": final_evaluation,
+            "iterations": iterations,
+        }
+
 
 class RoutingAgent:
     """

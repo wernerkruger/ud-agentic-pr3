@@ -10,6 +10,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 prompt = "What is the capital of France?"
+print("Prompt:", prompt)
+print()
 
 # Parameters for the Knowledge Agent (worker)
 persona = "You are a college professor, your answer always starts with: Dear students,"
