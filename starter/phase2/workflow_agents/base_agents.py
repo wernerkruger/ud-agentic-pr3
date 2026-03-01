@@ -1,11 +1,20 @@
 # Agent library for agentic workflows
+# numpy/pandas not imported at top level to avoid Bus error on some systems when running the workflow
 from openai import OpenAI
-import numpy as np
-import pandas as pd
 import re
 import csv
 import uuid
 from datetime import datetime
+
+
+def _cosine_similarity(a, b):
+    """Pure-Python cosine similarity for lists (avoids numpy in workflow path)."""
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
 
 
 def _client(api_key):
@@ -114,8 +123,7 @@ class RAGKnowledgePromptAgent:
         return response.data[0].embedding
 
     def calculate_similarity(self, vector_one, vector_two):
-        vec1, vec2 = np.array(vector_one), np.array(vector_two)
-        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+        return _cosine_similarity(vector_one, vector_two)
 
     def chunk_text(self, text):
         separator = "\n"
@@ -151,15 +159,17 @@ class RAGKnowledgePromptAgent:
         return chunks
 
     def calculate_embeddings(self):
+        import pandas as pd
         df = pd.read_csv(f"chunks-{self.unique_filename}", encoding="utf-8")
         df["embeddings"] = df["text"].apply(self.get_embedding)
         df.to_csv(f"embeddings-{self.unique_filename}", encoding="utf-8", index=False)
         return df
 
     def find_prompt_in_knowledge(self, prompt):
+        import pandas as pd
         prompt_embedding = self.get_embedding(prompt)
         df = pd.read_csv(f"embeddings-{self.unique_filename}", encoding="utf-8")
-        df["embeddings"] = df["embeddings"].apply(lambda x: np.array(eval(x)))
+        df["embeddings"] = df["embeddings"].apply(lambda x: list(eval(x)))
         df["similarity"] = df["embeddings"].apply(
             lambda emb: self.calculate_similarity(prompt_embedding, emb)
         )
@@ -366,17 +376,14 @@ class RoutingAgent:
         return response.data[0].embedding
 
     def route(self, user_input):
-        input_emb = np.array(self.get_embedding(user_input))
+        input_emb = self.get_embedding(user_input)  # list from API
         best_agent = None
-        best_score = -1
+        best_score = -1.0
 
         for agent in self.agents:
             desc = agent.get("description", "")
             agent_emb = self.get_embedding(desc)
-            agent_emb = np.array(agent_emb)
-            similarity = np.dot(input_emb, agent_emb) / (
-                np.linalg.norm(input_emb) * np.linalg.norm(agent_emb)
-            )
+            similarity = _cosine_similarity(input_emb, agent_emb)
             if similarity > best_score:
                 best_score = similarity
                 best_agent = agent

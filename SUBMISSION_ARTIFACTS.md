@@ -31,21 +31,22 @@
 
 ## Phase 2: Workflow output
 
-**Requirement:** Evidence of the workflow run showing the **final consolidated output** with user stories, product features, and engineering tasks.
+**Requirement:** Evidence of the workflow run showing the **final consolidated output** with user stories, product features, and engineering tasks. **Include the generated file in your submission so reviewers do not need to run the script.**
 
-### How to generate the Phase 2 output
+### How to generate and submit the Phase 2 output
 
-1. From the project root:
+1. Ensure `OPENAI_API_KEY` is set in `.env` at the project root.
+2. From the project root run:
    ```bash
    cd starter/phase2
    bash run_workflow_and_save_output.sh
    ```
-2. This creates `starter/phase2/workflow_output.txt` containing the full run, including:
-   - Workflow prompt (full-plan: user stories + features + tasks)
-   - Steps and routing
-   - **Final consolidated output** with sections: **USER STORIES**, **PRODUCT FEATURES**, **ENGINEERING TASKS**
-
-3. **Submit** this file (or a screenshot) as Phase 2 workflow evidence.
+3. This creates **`starter/phase2/workflow_output.txt`** with the full run. **Include this file in your submitted files.**
+4. The file must show:
+   - Step 3 routed to **Development Engineer** (not Program Manager)
+   - **USER STORIES** (As a …, I want …, so that …)
+   - **PRODUCT FEATURES** (Feature Name / Description / Key Functionality / User Benefit)
+   - **ENGINEERING TASKS** with every task having: Task ID, Task Title, Related User Story, Description, Acceptance Criteria, Estimated Effort, Dependencies
 
 ---
 
@@ -55,4 +56,5 @@
 - [ ] **Phase 1:** DirectPromptAgent output includes the “knowledge source” print.
 - [ ] **Phase 1:** AugmentedPromptAgent output includes the “knowledge/persona impact” print.
 - [ ] **Phase 1:** KnowledgeAugmentedPromptAgent output includes the “confirmation” print.
-- [ ] **Phase 2:** Workflow output shows the **consolidated** final plan (user stories + features + tasks), not only the last step.
+- [ ] **Phase 2:** Run `run_workflow_and_save_output.sh` and **include `starter/phase2/workflow_output.txt`** in your submission.
+- [ ] **Phase 2:** Output shows Step 3 routed to Development Engineer and ENGINEERING TASKS in the required structure (Task ID, Task Title, Related User Story, Description, Acceptance Criteria, Estimated Effort, Dependencies).

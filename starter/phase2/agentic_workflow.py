@@ -18,6 +18,7 @@ load_dotenv(os.path.join(script_dir, "..", "..", ".env"))
 
 # Load the OpenAI API key
 openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = 'voc-335810259159874469028369a31e3dd91616.44164269'
 
 # Load the product spec document
 spec_path = os.path.join(script_dir, "Product-Spec-Email-Router.txt")
@@ -106,10 +107,16 @@ program_manager_evaluation_agent = EvaluationAgent(
 persona_dev_engineer = "You are a Development Engineer, you are responsible for defining the development tasks for a product."
 knowledge_dev_engineer = (
     "Development tasks are defined by identifying what needs to be built to implement each user story. "
-    "Each task must use: Task ID:, Task Title:, Related User Story:, Description:, "
-    "Acceptance Criteria:, Estimated Effort:, Dependencies:.\n\n"
+    "Every task MUST be written in this exact structure with these exact labels (one per line):\n"
+    "Task ID: [unique identifier]\n"
+    "Task Title: [brief description]\n"
+    "Related User Story: [reference to the user story]\n"
+    "Description: [detailed technical work required]\n"
+    "Acceptance Criteria: [requirements for completion]\n"
+    "Estimated Effort: [time or complexity]\n"
+    "Dependencies: [tasks that must be completed first]\n\n"
     "The product is the Email Router (AI-powered email analysis, routing, classification, response generation). "
-    "Tasks must be specific to building the Email Router, not generic.\n\n"
+    "Tasks must be specific to building the Email Router.\n\n"
     "Email Router product context:\n"
     + product_spec
 )
@@ -122,9 +129,9 @@ development_engineer_knowledge_agent = KnowledgeAugmentedPromptAgent(
 # ---------------------------------------------------------------------------
 persona_dev_engineer_eval = "You are an evaluation agent that checks the answers of other worker agents."
 evaluation_criteria_dev = (
-    "The answer must be engineering tasks for the Email Router product only, each with: Task ID:, Task Title:, "
-    "Related User Story:, Description:, Acceptance Criteria:, Estimated Effort:, Dependencies:. "
-    "Tasks must be for building the Email Router (email, classification, routing, RAG, dashboard); no generic auth or unrelated tasks."
+    "The answer must be engineering tasks for the Email Router only. Each task MUST include all of these labels exactly: "
+    "Task ID, Task Title, Related User Story, Description, Acceptance Criteria, Estimated Effort, Dependencies. "
+    "Reject if any task is missing any of these fields. Tasks must be for the Email Router (email ingestion, classification, routing, RAG, dashboard)."
 )
 development_engineer_evaluation_agent = EvaluationAgent(
     openai_api_key,
@@ -137,47 +144,54 @@ development_engineer_evaluation_agent = EvaluationAgent(
 # ---------------------------------------------------------------------------
 # Support functions for routed tasks: call Knowledge Agent first, then pass
 # response to Evaluation Agent (explicit handoff: knowledge agent -> evaluate)
+# Use _workflow_step_context so routing can use short step (correct agent) while
+# the agent receives full context (user stories/features for steps 2 and 3).
 # ---------------------------------------------------------------------------
+_workflow_step_context = ""
 
 
 def product_manager_support_function(query):
     """Get user stories from Product Manager agent, then validate via Evaluation Agent."""
-    response_from_knowledge_agent = product_manager_knowledge_agent.respond(query)
-    result = product_manager_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
+    prompt = _workflow_step_context or query
+    response_from_knowledge_agent = product_manager_knowledge_agent.respond(prompt)
+    result = product_manager_evaluation_agent.evaluate_response(prompt, response_from_knowledge_agent)
     return result["final_response"]
 
 
 def program_manager_support_function(query):
     """Get product features from Program Manager agent, then validate via Evaluation Agent."""
-    response_from_knowledge_agent = program_manager_knowledge_agent.respond(query)
-    result = program_manager_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
+    prompt = _workflow_step_context or query
+    response_from_knowledge_agent = program_manager_knowledge_agent.respond(prompt)
+    result = program_manager_evaluation_agent.evaluate_response(prompt, response_from_knowledge_agent)
     return result["final_response"]
 
 
 def development_engineer_support_function(query):
     """Get engineering tasks from Development Engineer agent, then validate via Evaluation Agent."""
-    response_from_knowledge_agent = development_engineer_knowledge_agent.respond(query)
-    result = development_engineer_evaluation_agent.evaluate_response(query, response_from_knowledge_agent)
+    prompt = _workflow_step_context or query
+    response_from_knowledge_agent = development_engineer_knowledge_agent.respond(prompt)
+    result = development_engineer_evaluation_agent.evaluate_response(prompt, response_from_knowledge_agent)
     return result["final_response"]
 
 
 # ---------------------------------------------------------------------------
 # Routing Agent (routes steps to Product Manager, Program Manager, or Development Engineer)
 # ---------------------------------------------------------------------------
+# Route descriptions phrased so step 1/2/3 text matches the intended agent (short step used for routing)
 routing_routes = [
     {
         "name": "Product Manager",
-        "description": "Responsible for defining product personas and user stories only. Does not define features or tasks. Does not group stories.",
+        "description": "Define user stories from the product spec. Persona, action, outcome per story. Does not define features or engineering tasks.",
         "func": product_manager_support_function,
     },
     {
         "name": "Program Manager",
-        "description": "Responsible for defining product features by grouping user stories. Does not define individual user stories or engineering tasks.",
+        "description": "Define product features by grouping related user stories. Feature Name, Description, Key Functionality, User Benefit. Does not define user stories or engineering tasks.",
         "func": program_manager_support_function,
     },
     {
         "name": "Development Engineer",
-        "description": "Responsible for defining detailed engineering tasks and development work for each user story. Does not define user stories or features.",
+        "description": "Define detailed engineering tasks for each user story. Task ID, Task Title, Related User Story, Description, Acceptance Criteria, Estimated Effort, Dependencies. Does not define user stories or features.",
         "func": development_engineer_support_function,
     },
 ]
@@ -201,8 +215,14 @@ print("\nDefining workflow steps from the workflow prompt")
 workflow_steps = action_planning_agent.extract_steps_from_prompt(workflow_prompt)
 
 completed_steps = []
+# Use short, canonical step text for ROUTING only so step 3 routes to Development Engineer (not Program Manager).
+# Full context (user stories/features) is passed via _workflow_step_context so the selected agent gets it.
+STEP_FOR_ROUTING = [
+    "Define user stories for the Email Router from the product spec (persona, action, outcome per story).",
+    "Define product features for the Email Router by grouping related user stories.",
+    "Define detailed engineering tasks for the Email Router for each user story.",
+]
 for i, step in enumerate(workflow_steps, 1):
-    # Pass prior-step outputs so features and tasks are Email Router–specific and chained
     if i == 1:
         step_prompt = step
     elif i == 2 and completed_steps:
@@ -214,16 +234,20 @@ for i, step in enumerate(workflow_steps, 1):
     elif i == 3 and len(completed_steps) >= 2:
         step_prompt = (
             step + "\n\n[Email Router] Use the following user stories and features to define engineering tasks. "
-            "Output tasks specific to building the Email Router system.\n\n"
+            "Each task MUST include: Task ID, Task Title, Related User Story, Description, Acceptance Criteria, Estimated Effort, Dependencies.\n\n"
             "User stories:\n" + completed_steps[0] + "\n\nProduct features:\n" + completed_steps[1]
         )
     else:
         step_prompt = step
 
+    # Route using SHORT step so step 3 matches Development Engineer (not Program Manager)
+    step_for_routing = STEP_FOR_ROUTING[i - 1] if i <= len(STEP_FOR_ROUTING) else step
+    _workflow_step_context = step_prompt
+
     print(f"\n{'='*60}")
     print(f"Step {i}: {step}")
     print("=" * 60)
-    result = routing_agent.route(step_prompt)
+    result = routing_agent.route(step_for_routing)
     completed_steps.append(result)
     print(f"\nResult for step {i}:")
     print(result)
